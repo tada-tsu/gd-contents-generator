@@ -1,6 +1,6 @@
 <?php
 
-namespace TadaTsu\GDContentsGenerator;
+namespace GDContentsGenerator;
 
 class Generator
 {

@@ -1,6 +1,7 @@
 {
     "name": "tada-tsu/gd-contents-generator",
     "type": "library",
+    "description": "make contents image used GD (PHP Library)",
     "authors": [
         {
             "name": "tada-tsu",
@@ -12,7 +13,7 @@
     },
     "autoload": {
         "psr-4": {
-            "TadaTsu\\GDContentsGenerator\\": "src/TadaTsu/GDContentsGenerator"
+            "GDContentsGenerator\\": "src/GDContentsGenerator/"
         }
     }
 }
