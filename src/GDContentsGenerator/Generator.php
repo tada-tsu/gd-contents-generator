@@ -2,151 +2,294 @@
 
 namespace GDContentsGenerator;
 
+use GDContentsGenerator\Color;
+
 class Generator
 {
-    /**
-     * background colors
-     *
-     * @var array
-     */
-    public $colors = [
-        100   => [0xf3, 0xeb, 0xc4, false],
-        500   => [0xf1, 0x54, 0x5d, true],
-        1000  => [0xb2, 0xe2, 0xee, false],
-        2500  => [0x5c, 0xc2, 0x78, true],
-        5000  => [0x3c, 0xba, 0xec, true],
-        10000 => [0x3f, 0x3f, 0x3f, true],
+    protected $imageLoadFunctionsMap = [
+        'jpg'  => "imagecreatefromjpeg",
+        'jpeg' => "imagecreatefromjpeg",
+
+        'png'  => "imagecreatefrompng",
+
+        'gif'  => "imagecreatefromgif",
+
+        'bmp'  => "imagecreatefrombmp",
+
+        'webp' => "imagecreatefromwebp",
     ];
 
-    public function contents(Request $request)
+    /**
+     *
+     *
+     * @var Color $color
+     */
+    protected $color;
+
+    /**
+     *
+     *
+     * @var int $padding
+     */
+    protected $padding;
+
+    /**
+     *
+     *
+     * @var int $sampledPadding
+     */
+    protected $sampledPadding;
+
+    /**
+     * path/to/font.ttf
+     * default use "Roboto"
+     *
+     * @var string $fontPath
+     */
+    protected $fontPath;
+
+    /**
+     * path/to/tipImagePath.png
+     * default use "star"
+     *
+     * @var string $tipImagePath
+     */
+    protected $tipImagePath;
+
+    /**
+     * for base image resource
+     *
+     * @var resource $baseImage
+     */
+    private $baseImage;
+
+    /**
+     * Generate image size
+     *
+     * @var int
+     */
+    private $imageSize;
+
+    /**
+     * sampling rate
+     *
+     * @var int
+     */
+    private $sampling;
+
+    /**
+     * image size timed sampling rate
+     *
+     * @var int
+     */
+    private $sampledImageSize;
+
+    /**
+     * generate base image
+     *
+     * @param Color $color
+     * @param string $imagePath
+     * @param integer $imageSize
+     * @param integer $sampling
+     */
+    public function __construct(Color $color, string $imagePath, int $imageSize = 400, int $sampling = 3)
     {
+        $this->color            = $color;
+        $this->imagePath        = $imagePath;
+        $this->imageSize        = $imageSize;
+        $this->sampling         = $sampling;
+        $this->sampledImageSize = $imageSize * $sampling;
 
-        $cached_image = Cache::remember('contents_' . json_encode($request->query()), 60 * 24 * 365, function () use (&$request) {
+        $this->padding        = $imageSize / 5;
+        $this->sampledPadding = $this->padding * $sampling;
+        $this->fontPath       = dirname(__DIR__) . '/fonts/Roboto-Medium.ttf';
+        $this->tipImagePath   = dirname(__DIR__) . '/images/star.png';
 
-            $path   = preg_replace('/(https?):\/\/(.*?)\/(.*)/', dirname(dirname(dirname(__DIR__))) . '/public/$3', $request->input('path'));
-            $ext    = preg_replace('/^.*\.(.*)$/', '$1', $path);
-            $star   = $request->input('star');
-            $user   = $request->input('user');
-            $amount = $request->input('amount');
-
-            // 初期画像生成
-            $imageSize = 400;
-            $imageSize *= 3;
-            $image = imagecreatetruecolor($imageSize, $imageSize);
-            imagesavealpha($image, true);
-            $transparent = imagecolorallocatealpha($image, 127, 127, 127, 127);
-            imagefill($image, 0, 0, $transparent);
-
-            // 楕円描画
-            $ellipseColor = imagecolorallocate($image, self::$colors[$amount][0], self::$colors[$amount][1], self::$colors[$amount][2]);
-            imagefilledellipse($image, $imageSize / 2, $imageSize
-                / 2, $imageSize, $imageSize, $ellipseColor);
-
-            // コンテンツ画像書き込み
-            if ($ext == 'png') {
-                $contentsImage = imagecreatefrompng($path);
-            } elseif ($ext == 'jpg' || $ext == 'jpeg') {
-                $contentsImage = imagecreatefromjpeg($path);
-            } elseif ($ext == 'gif') {
-                $contentsImage = imagecreatefromgif($path);
-            }
-            $padding = 80;
-            $padding *= 3;
-            $ratio = imagesx($contentsImage) / imagesy($contentsImage);
-            if ($ratio > 1) {
-                // 横長
-                imagecopyresized(
-                    $image,
-                    $contentsImage,
-                    $padding,
-                    $imageSize / 2 - ($imageSize - $padding * 2) / $ratio / 2,
-                    0,
-                    0,
-                    $imageSize - $padding * 2,
-                    ($imageSize - $padding * 2) / $ratio,
-                    imagesx($contentsImage),
-                    imagesy($contentsImage)
-                );
-            } else {
-                // 縦長
-                imagecopyresized(
-                    $image,
-                    $contentsImage,
-                    $imageSize / 2 - ($imageSize - $padding * 2) * $ratio / 2,
-                    $padding,
-                    0,
-                    0,
-                    ($imageSize - $padding * 2) * $ratio,
-                    $imageSize - $padding * 2,
-                    imagesx($contentsImage),
-                    imagesy($contentsImage)
-                );
-            }
-
-            // フォント指定
-            $roboto = dirname(dirname(dirname(__DIR__))) . '/resources/fonts/Roboto-Medium.ttf';
-
-            // 文字色
-            if (self::$colors[$amount][3]) {
-                $textColor = imagecolorallocate($image, 255, 255, 255);
-            } else {
-                $textColor = imagecolorallocate($image, 16, 16, 16);
-            }
-
-            // スター名
-            $starScreenName = User::findOrFail($star)->screen_name;
-            $bbox           = imagettfbbox(60, 0, $roboto, $starScreenName);
-            $w              = $bbox[2] - $bbox[0];
-            $h              = $bbox[3] - $bbox[1];
-            imagettftext($image, 60, 0, $imageSize / 2 - $w / 2, 180, $textColor, $roboto, $starScreenName);
-
-            // ユーザー名
-            if (User::find($user)) {
-                $userScreenName = User::findOrFail($user)->screen_name;
-                $bbox           = imagettfbbox(60, 0, $roboto, $userScreenName);
-                $w              = $bbox[2] - $bbox[0];
-                $h              = $bbox[3] - $bbox[1];
-                imagettftext($image, 60, 0, $imageSize / 2 - $w / 2, $imageSize - 120, $textColor, $roboto, $userScreenName);
-            }
-
-            // スター数
-            $bbox = imagettfbbox(80, 0, $roboto, $amount / 100);
-            $w    = $bbox[2] - $bbox[0];
-            $h    = $bbox[3] - $bbox[1];
-            imagettftext($image, 80, 0, 110 - $w / 2, $imageSize / 2 - $h / 2, $textColor, $roboto, $amount / 100);
-
-            // スター（右）
-            $starImage = imagecreatefrompng(dirname(dirname(dirname(__DIR__))) . '/resources/images/star.png');
-            imagecopyresized($image, $starImage, $imageSize - 180, $imageSize / 2 - imagesy($starImage) / 3, 0, 0, 120, 120, imagesx($starImage), imagesy($starImage));
-
-            // アンチエイリアス
-            $resolvedImage = imagecreatetruecolor($imageSize / 3, $imageSize / 3);
-            imagesavealpha($resolvedImage, true);
-            $transparent = imagecolorallocatealpha($resolvedImage, 127, 127, 127, 127);
-            imagefill($resolvedImage, 0, 0, $transparent);
-
-            imagecopyresampled($resolvedImage, $image, 0, 0, 0, 0, $imageSize / 3, $imageSize / 3, $imageSize, $imageSize);
-
-            // レスポンス取得
-            ob_start();
-
-            imagepng($resolvedImage);
-
-            $imageContents = ob_get_contents();
-            ob_end_clean();
-
-            // 破棄
-            imagedestroy($image);
-            imagedestroy($contentsImage);
-            imagedestroy($resolvedImage);
-
-            // 吐き出し
-            return $imageContents;
-        });
-
-        return response($cached_image)
-            ->header('Content-Type', 'image/png')
-            ->header('Cache-Control', 'max-age='. 60*60*24*7);
-
+        $this->baseImage = $this->createBaseImage();
     }
+
+    /**
+     * draw text and image
+     *
+     * @param string $topText
+     * @param string $bottomText
+     * @param string $leftText
+     * @return Generator $this
+     */
+    public function drawDetails(string $topText, string $bottomText, string $leftText)
+    {
+        $this->drawTopText($this->baseImage, $topText);
+        $this->drawBottomText($this->baseImage, $bottomText);
+
+        $this->drawLeftText($this->baseImage, $leftText);
+        $this->drawRightImage($this->baseImage, $this->tipImagePath);
+
+        return $this;
+    }
+
+    /**
+     * draw contents image
+     *
+     * @return Generator $this
+     */
+    public function drawContentsImage()
+    {
+        $contentsImage = $this->loadImage($this->imagePath);
+
+        $ratio            = imagesx($contentsImage) / imagesy($contentsImage);
+        $dependsRatioArgs = [
+            $ratio > 1 ? $this->sampledPadding : ($this->sampledImageSize - ($this->sampledImageSize - $this->sampledPadding * 2) * $ratio) / 2,
+            $ratio > 1 ? ($this->sampledImageSize - ($this->sampledImageSize - $this->sampledPadding * 2) / $ratio) / 2 : $this->sampledPadding,
+            0,
+            0,
+            $ratio > 1 ? $this->sampledImageSize - $this->sampledPadding * 2 : ($this->sampledImageSize - $this->sampledPadding * 2) * $ratio,
+            $ratio > 1 ? ($this->sampledImageSize - $this->sampledPadding * 2) / $ratio : $this->sampledImageSize - $this->sampledPadding * 2,
+            imagesx($contentsImage),
+            imagesy($contentsImage),
+        ];
+
+        imagecopyresized(
+            $this->baseImage,
+            $contentsImage,
+            ...$dependsRatioArgs
+        );
+
+        return $this;
+    }
+
+    /**
+     * save image
+     *
+     * @param string $savePath
+     * @return bool
+     */
+    public function save(string $savePath)
+    {
+        return imagepng($this->antialiasImage($this->baseImage), $savePath);
+    }
+
+    public function generate()
+    {
+        return $this->antialiasImage($this->baseImage);
+    }
+
+    protected function loadImage(string $path)
+    {
+        $ext = preg_replace('/.*\.(.*)$/', '$1', basename($path));
+
+        return $this->imageLoadFunctionsMap[$ext]($path);
+    }
+
+    protected function createBaseImage()
+    {
+        $image = imagecreatetruecolor($this->sampledImageSize, $this->sampledImageSize);
+
+        imagesavealpha($image, true);
+        imagefill($image, 0, 0, imagecolorallocatealpha($image, 127, 127, 127, 127));
+
+        $color = $this->color->getColors();
+
+        $ellipseColor = imagecolorallocate($image, ...$color);
+        imagefilledellipse($image, $this->sampledImageSize / 2, $this->sampledImageSize
+            / 2, $this->sampledImageSize, $this->sampledImageSize, $ellipseColor);
+
+        return $image;
+    }
+
+    protected function drawTopText($imageResource, string $text)
+    {
+        $this->drawingTextToCenter(
+            $imageResource,
+            $text,
+            $this->imageSize * 0.15,
+            $this->sampledImageSize / 2,
+            $this->imageSize * 0.225,
+            $this->fontPath,
+            $this->color->getTextColor()
+        );
+    }
+
+    protected function drawBottomText($imageResource, string $text)
+    {
+        $this->drawingTextToCenter(
+            $imageResource,
+            $text,
+            $this->imageSize * 0.15,
+            $this->sampledImageSize / 2,
+            $this->sampledImageSize - $this->imageSize * 0.225,
+            $this->fontPath,
+            $this->color->getTextColor()
+        );
+    }
+
+    protected function drawLeftText($imageResource, string $text)
+    {
+        $this->drawingTextToCenter(
+            $imageResource,
+            $text,
+            $this->imageSize * 0.2,
+            $this->imageSize * 0.275,
+            $this->sampledImageSize / 2,
+            $this->fontPath,
+            $this->color->getTextColor()
+        );
+    }
+
+    protected function drawRightImage($imageResource, string $tipImagePath)
+    {
+        $starImage = $this->loadImage($tipImagePath);
+        imagecopyresized(
+            $imageResource,
+            $starImage,
+            $this->sampledImageSize - $this->imageSize * 0.45,
+            $this->sampledImageSize / 2 - $this->imageSize * 0.15,
+            0,
+            0,
+            $this->imageSize * 0.3,
+            $this->imageSize * 0.3,
+            imagesx($starImage),
+            imagesy($starImage)
+        );
+    }
+
+    protected function drawingTextToCenter($imageResource, string $text, int $fontSize, int $x, int $y, string $fontPath, array $color)
+    {
+        $bbox = imagettfbbox($fontSize, 0, $fontPath, $text);
+        $w    = $bbox[2] - $bbox[6];
+        $h    = $bbox[3] - $bbox[7];
+
+        $textColor = imagecolorallocate($imageResource, ...$color);
+        imagettftext(
+            $imageResource,
+            $fontSize,
+            0,
+            $x - $w / 2,
+            $y + $h / 2,
+            $textColor,
+            $fontPath,
+            $text
+        );
+    }
+
+    protected function antialiasImage($imageResource)
+    {
+        $antialiased = imagecreatetruecolor($this->imageSize, $this->imageSize);
+        imagesavealpha($antialiased, true);
+        imagefill($antialiased, 0, 0, imagecolorallocatealpha($antialiased, 127, 127, 127, 127));
+        imagecopyresampled(
+            $antialiased,
+            $imageResource,
+            0,
+            0,
+            0,
+            0,
+            $this->imageSize,
+            $this->imageSize,
+            imagesx($imageResource),
+            imagesy($imageResource)
+        );
+
+        return $antialiased;
+    }
+
 }
