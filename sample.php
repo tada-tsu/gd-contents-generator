@@ -15,5 +15,5 @@ $generator = new GDContentsGenerator\Generator(
 );
 
 $generator->drawDetails("aaa", "bbb", "10")
-    ->drawcontentsImage()
+    ->generateContentsImage()
     ->save("sample.png");

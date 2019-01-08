@@ -128,11 +128,11 @@ class Generator
     }
 
     /**
-     * draw contents image
+     * generate contents image
      *
      * @return Generator $this
      */
-    public function drawContentsImage()
+    public function generateContentsImage()
     {
         $contentsImage = $this->loadImage($this->imagePath);
 
@@ -168,11 +168,22 @@ class Generator
         return imagepng($this->antialiasImage($this->baseImage), $savePath);
     }
 
+    /**
+     * get antialiased image
+     *
+     * @return Generator $this
+     */
     public function generate()
     {
         return $this->antialiasImage($this->baseImage);
     }
 
+    /**
+     * auto ditect ext and load image
+     *
+     * @param string $path
+     * @return Resource 
+     */
     protected function loadImage(string $path)
     {
         $ext = preg_replace('/.*\.(.*)$/', '$1', basename($path));
@@ -196,6 +207,13 @@ class Generator
         return $image;
     }
 
+    /**
+     * draw text to top
+     *
+     * @param Resource $imageResource
+     * @param string $text
+     * @return void
+     */
     protected function drawTopText($imageResource, string $text)
     {
         $this->drawingTextToCenter(
@@ -271,6 +289,12 @@ class Generator
         );
     }
 
+    /**
+     * get antialiased image
+     *
+     * @param Resource $imageResource
+     * @return Resource
+     */
     protected function antialiasImage($imageResource)
     {
         $antialiased = imagecreatetruecolor($this->imageSize, $this->imageSize);

@@ -35,11 +35,11 @@ $generator2 = new GDContentsGenerator\Generator(
 # Save or return result
 
 $generator1->drawDetails("top text", "bottom text", "left text")
-    ->drawcontentsImage()
+    ->generateContentsImage()
     ->save("sample.png"); // save image
 
 $generator2>drawDetails("top text", "bottom text", "left text")
-    ->drawcontentsImage();
+    ->generateContentsImage();
     
 $result = $generator2->generate(); // return result image resource
 
