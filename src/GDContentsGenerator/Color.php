@@ -8,9 +8,9 @@ namespace GDContentsGenerator;
  */
 class Color
 {
-    private static $value;
-    private static $colors;
-    private static $whiteText;
+    private $value;
+    private $colors;
+    private $whiteText;
 
     /**
      * Set color
@@ -22,12 +22,12 @@ class Color
      */
     public function __construct(int $r, int $g, int $b, bool $whiteText = null)
     {
-        self::$colors = [
+        $this->colors = [
             $r,
             $g,
             $b,
         ];
-        self::$whiteText = $whiteText == true;
+        $this->whiteText = $whiteText == true;
     }
 
     /**
@@ -37,7 +37,7 @@ class Color
      */
     public function getColors()
     {
-        return self::$colors;
+        return $this->colors;
     }
 
     /**
@@ -61,6 +61,6 @@ class Color
      */
     public function isWhiteText()
     {
-        return self::$whiteText;
+        return $this->whiteText;
     }
 }
