@@ -19,6 +19,19 @@ class Generator
         'webp' => "imagecreatefromwebp",
     ];
 
+    protected $imageOutFunctionsMap = [
+        'jpg'  => "imagejpeg",
+        'jpeg' => "imagejpeg",
+
+        'png'  => "imagepng",
+
+        'gif'  => "imagegif",
+
+        'bmp'  => "imagebmp",
+
+        'webp' => "imagewebp",
+    ];
+
     /**
      *
      *
@@ -105,7 +118,10 @@ class Generator
         $this->fontPath       = dirname(__DIR__) . '/fonts/Roboto-Medium.ttf';
         $this->tipImagePath   = dirname(__DIR__) . '/images/star.png';
 
+        $this->baselineRatio = (imagettfbbox(10, 0, $this->fontPath, '0')[3] - imagettfbbox(10, 0, $this->fontPath, '0')[7]) / (imagettfbbox(10, 0, $this->fontPath, '0gpy')[3] - imagettfbbox(10, 0, $this->fontPath, '0gpy')[7]);
+
         $this->baseImage = $this->createBaseImage();
+        imageantialias($this->baseImage, true);
     }
 
     /**
@@ -161,32 +177,52 @@ class Generator
      * save image
      *
      * @param string $savePath
-     * @return bool
+     * @param bool $destroy destroy image resource
+     * @return bool success save image
      */
-    public function save(string $savePath)
+    public function save(string $savePath, bool $destroy = true)
     {
-        return imagepng($this->antialiasImage($this->baseImage), $savePath);
+        $status = $this->imageOutFunctionsMap[self::getExtByPath($savePath)]($this->antialiasImage($this->baseImage), $savePath);
+
+        if ($destroy) {
+            imagedestroy($this->baseImage);
+        }
+        return $status;
     }
 
     /**
      * get antialiased image
      *
-     * @return Generator $this
+     * @param string $type
+     * @return resource|string $this
      */
-    public function generate()
+    public function generate($ext = null)
     {
-        return $this->antialiasImage($this->baseImage);
+        if ($ext === null) {
+            return $this->antialiasImage($this->baseImage);
+        }
+
+        ob_start();
+        $status = $this->imageOutFunctionsMap[$ext]($this->antialiasImage($this->baseImage));
+        $result = ob_get_clean();
+
+        return $result;
+    }
+
+    protected static function getExtByPath(string $path)
+    {
+        return preg_replace('/.*\.(.*)$/', '$1', basename($path));
     }
 
     /**
      * auto ditect ext and load image
      *
      * @param string $path
-     * @return Resource 
+     * @return Resource
      */
     protected function loadImage(string $path)
     {
-        $ext = preg_replace('/.*\.(.*)$/', '$1', basename($path));
+        $ext = self::getExtByPath($path);
 
         return $this->imageLoadFunctionsMap[$ext]($path);
     }
@@ -219,9 +255,9 @@ class Generator
         $this->drawingTextToCenter(
             $imageResource,
             $text,
-            $this->imageSize * 0.15,
+            $this->sampledImageSize * 0.05,
             $this->sampledImageSize / 2,
-            $this->imageSize * 0.225,
+            $this->sampledPadding / 2,
             $this->fontPath,
             $this->color->getTextColor()
         );
@@ -232,9 +268,9 @@ class Generator
         $this->drawingTextToCenter(
             $imageResource,
             $text,
-            $this->imageSize * 0.15,
+            $this->sampledImageSize * 0.05,
             $this->sampledImageSize / 2,
-            $this->sampledImageSize - $this->imageSize * 0.225,
+            $this->sampledImageSize - $this->sampledPadding / 2,
             $this->fontPath,
             $this->color->getTextColor()
         );
@@ -245,8 +281,8 @@ class Generator
         $this->drawingTextToCenter(
             $imageResource,
             $text,
-            $this->imageSize * 0.2,
-            $this->imageSize * 0.275,
+            $this->sampledImageSize * 0.06,
+            $this->sampledPadding / 2,
             $this->sampledImageSize / 2,
             $this->fontPath,
             $this->color->getTextColor()
@@ -259,12 +295,12 @@ class Generator
         imagecopyresized(
             $imageResource,
             $starImage,
-            $this->sampledImageSize - $this->imageSize * 0.45,
-            $this->sampledImageSize / 2 - $this->imageSize * 0.15,
+            $this->sampledImageSize - $this->sampledPadding / 2 - $this->sampledImageSize * 0.05,
+            $this->sampledImageSize / 2 - $this->sampledImageSize * 0.05,
             0,
             0,
-            $this->imageSize * 0.3,
-            $this->imageSize * 0.3,
+            $this->sampledImageSize * 0.1,
+            $this->sampledImageSize * 0.1,
             imagesx($starImage),
             imagesy($starImage)
         );
@@ -282,7 +318,7 @@ class Generator
             $fontSize,
             0,
             $x - $w / 2,
-            $y + $h / 2,
+            $y + ($h * $this->baselineRatio) / 2,
             $textColor,
             $fontPath,
             $text

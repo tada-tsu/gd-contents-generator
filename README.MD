@@ -43,6 +43,11 @@ $generator2>drawDetails("top text", "bottom text", "left text")
     
 $result = $generator2->generate(); // return result image resource
 
+$result = $generator2->generate('jpg'); // return result image binary
+$result = $generator2->generate('png'); // return result image binary
+$result = $generator2->generate('gif'); // return result image binary
+$result = $generator2->generate('webp'); // return result image binary
+
 ```
 
 ## sample

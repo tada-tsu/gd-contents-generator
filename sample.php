@@ -11,9 +11,9 @@ $colorArray = [
 $color     = new GDContentsGenerator\Color(...$colorArray);
 $generator = new GDContentsGenerator\Generator(
     $color,
-    'src/images/star.png'
+    'sample_contents_image.png'
 );
 
-$generator->drawDetails("aaa", "bbb", "10")
+$generator->drawDetails("sample text", "sample text", "10")
     ->generateContentsImage()
-    ->save("sample.png");
+    ->save('sample.png');
