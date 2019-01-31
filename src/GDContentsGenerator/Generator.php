@@ -232,6 +232,8 @@ class Generator
         $image = imagecreatetruecolor($this->sampledImageSize, $this->sampledImageSize);
 
         imagesavealpha($image, true);
+        imageinterlace($image, true);
+        
         imagefill($image, 0, 0, imagecolorallocatealpha($image, 127, 127, 127, 127));
 
         $color = $this->color->getColors();
