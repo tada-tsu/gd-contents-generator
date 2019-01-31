@@ -294,6 +294,7 @@ class Generator
     protected function drawRightImage($imageResource, string $tipImagePath)
     {
         $starImage = $this->loadImage($tipImagePath);
+        imageinterlace($starImage, true);
         imagecopyresized(
             $imageResource,
             $starImage,
